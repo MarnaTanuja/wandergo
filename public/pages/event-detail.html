@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Event — WanderGo</title>
+<link rel="stylesheet" href="/css/shared.css"/>
+<style>
+.event-hero { position: relative; height: 480px; background: var(--ink); overflow: hidden; }
+.event-hero img { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }
+.event-hero-text { position: absolute; bottom: 0; left: 0; right: 0; padding: 40px 48px; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%); color: white; }
+.event-hero-text h1 { font-size: clamp(2rem, 4vw, 3rem); color: white; margin-bottom: 14px; }
+.event-meta-strip { display: flex; gap: 20px; flex-wrap: wrap; }
+.event-meta-strip span { font-size: 0.85rem; color: rgba(255,255,255,0.75); display: flex; align-items: center; gap: 5px; }
+.event-layout { display: grid; grid-template-columns: 1fr 320px; gap: 32px; align-items: start; }
+.event-sticky { position: sticky; top: 90px; }
+.booking-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+.booking-card-price { font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; font-weight: 700; color: var(--teal); margin-bottom: 6px; }
+.booking-card-price small { font-family: 'Outfit', sans-serif; font-size: 0.85rem; color: var(--ink-muted); font-weight: 400; }
+.host-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 16px; }
+.host-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--teal-dark), var(--teal)); color: white; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; }
+.action-strip { display: flex; gap: 10px; margin-top: 14px; }
+.like-btn.liked { color: var(--red); border-color: var(--red); }
+.bookmark-btn.bookmarked { color: var(--amber); border-color: var(--amber); }
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar"></nav>
+
+<div id="eventHero" class="event-hero">
+  <img id="heroImg" src="" alt=""/>
+  <div class="event-hero-text">
+    <div id="heroBadges" style="margin-bottom:12px;display:flex;gap:8px"></div>
+    <h1 id="heroTitle">Loading…</h1>
+    <div class="event-meta-strip" id="heroMeta"></div>
+  </div>
+</div>
+
+<section class="section-sm">
+  <div class="container">
+    <div class="event-layout" id="eventLayout">
+      <div>
+        <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:28px;margin-bottom:20px">
+          <h2 style="font-size:1.4rem;margin-bottom:16px">About this Event</h2>
+          <p id="eventDesc" style="color:var(--ink-soft);line-height:1.8;font-size:0.95rem"></p>
+          <div id="eventTags" style="margin-top:20px;display:flex;gap:6px;flex-wrap:wrap"></div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:28px">
+          <h2 style="font-size:1.4rem;margin-bottom:6px">About the Host</h2>
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--border)">
+            <div class="host-avatar" id="hostAvatar">H</div>
+            <div>
+              <strong id="hostName" style="display:block;font-size:0.95rem"></strong>
+              <small id="hostBio" style="color:var(--ink-muted)"></small>
+            </div>
+          </div>
+          <div id="contactHostArea" style="margin-top:16px;display:none">
+            <textarea id="hostMsgInput" placeholder="Write a message to the host…" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Outfit',sans-serif;outline:none;height:80px;resize:none;font-size:0.88rem"></textarea>
+            <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="sendHostMsg()">Send Message</button>
+          </div>
+          <div id="loginToContact" style="margin-top:14px;display:none">
+            <a href="/login" class="btn btn-outline btn-sm">Sign in to contact host</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-sticky">
+        <div class="booking-card">
+          <div class="booking-card-price" id="eventPrice">Loading…</div>
+          <div id="eventDates" style="font-size:0.84rem;color:var(--ink-muted);margin-bottom:16px"></div>
+          <div id="bookingArea"></div>
+          <div class="action-strip">
+            <button class="btn btn-ghost btn-sm like-btn" id="likeBtn" onclick="toggleLike()">♥ Like (<span id="likeCount">0</span>)</button>
+            <button class="btn btn-ghost btn-sm bookmark-btn" id="bookmarkBtn" onclick="toggleBookmark()">Bookmark</button>
+          </div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:0.78rem;color:var(--ink-muted);display:flex;gap:14px">
+            <span>👁 <span id="viewCount">0</span> views</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="/js/shared.js"></script>
+<script>
+buildNavbar("Events");
+const user = Auth.getUser();
+const eventId = new URLSearchParams(window.location.search).get("id");
+if (!eventId) window.location.href = "/events";
+
+let eventData = null;
+let isLiked = false;
+let isBookmarked = false;
+let hostId = null;
+
+async function loadEvent() {
+  const r = await api("/events/" + eventId);
+  if (!r.ok) { document.getElementById("heroTitle").textContent = "Event not found."; return; }
+
+  const { event: ev, isLiked: liked, isBookmarked: bm } = r.data;
+  eventData = ev; isLiked = liked; isBookmarked = bm;
+  hostId = ev.host?._id || ev.host;
+  document.title = `${ev.title} — WanderGo`;
+
+  // Hero
+  const img = ev.image || "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600&q=85";
+  document.getElementById("heroImg").src = img;
+  document.getElementById("heroImg").onerror = function () { this.src = "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600&q=85"; };
+  document.getElementById("heroTitle").textContent = ev.title;
+  document.getElementById("heroBadges").innerHTML =
+    (ev.category ? `<span class="badge badge-teal">${ev.category}</span>` : "") +
+    (ev.offer ? `<span class="badge badge-amber">${ev.offer}</span>` : "");
+
+  const date = formatDate(ev.date);
+  document.getElementById("heroMeta").innerHTML = `
+    <span>📍 ${ev.location?.city || ""}${ev.location?.country ? ", " + ev.location.country : ""}</span>
+    ${date ? `<span>🗓 ${date}</span>` : ""}
+    <span>👤 Hosted by ${ev.hostName || "Host"}</span>
+    <span>♥ ${ev.likes} likes</span>`;
+
+  // Body
+  document.getElementById("eventDesc").textContent = ev.description;
+  document.getElementById("eventTags").innerHTML = (ev.tags || []).map(t => `<span class="badge badge-teal">${t}</span>`).join("");
+
+  // Price
+  document.getElementById("eventPrice").innerHTML = ev.price > 0
+    ? `₹${ev.price.toLocaleString()} <small>/ person</small>`
+    : `<span style="color:var(--green)">Free</span>`;
+  document.getElementById("eventDates").textContent = date ? `Date: ${date}` : "";
+  document.getElementById("viewCount").textContent = ev.views;
+  document.getElementById("likeCount").textContent = ev.likes;
+
+  // Host
+  const host = ev.host;
+  if (host) {
+    document.getElementById("hostName").textContent = host.name || ev.hostName;
+    document.getElementById("hostBio").textContent = host.bio || "Event host on WanderGo";
+    document.getElementById("hostAvatar").textContent = (host.name || ev.hostName || "H")[0].toUpperCase();
+  }
+
+  // Booking area
+  const area = document.getElementById("bookingArea");
+  if (!user) {
+    area.innerHTML = `<a href="/login?next=/event-detail?id=${eventId}" class="btn btn-primary btn-full">Sign in to Book</a>`;
+  } else if (user.role === "traveler") {
+    area.innerHTML = `<a href="/book?id=${eventId}" class="btn btn-primary btn-full" style="display:block;text-align:center">Book Now</a>`;
+  } else if (user.role === "host" && user.id !== hostId && user._id !== hostId) {
+    area.innerHTML = `<div style="font-size:0.85rem;color:var(--ink-muted);text-align:center;padding:12px">Switch to a traveler account to book this event.</div>`;
+  }
+
+  // Like/bookmark state
+  updateLikeBtn(); updateBookmarkBtn();
+
+  // Contact host
+  if (user && user.role === "traveler") {
+    document.getElementById("contactHostArea").style.display = "block";
+  } else if (!user) {
+    document.getElementById("loginToContact").style.display = "block";
+  }
+}
+
+function updateLikeBtn() {
+  const btn = document.getElementById("likeBtn");
+  btn.className = "btn btn-ghost btn-sm like-btn" + (isLiked ? " liked" : "");
+  btn.innerHTML = `${isLiked ? "♥" : "♡"} Like (<span id="likeCount">${eventData?.likes || 0}</span>)`;
+}
+
+function updateBookmarkBtn() {
+  const btn = document.getElementById("bookmarkBtn");
+  btn.className = "btn btn-ghost btn-sm bookmark-btn" + (isBookmarked ? " bookmarked" : "");
+  btn.textContent = isBookmarked ? "Bookmarked" : "Bookmark";
+}
+
+async function toggleLike() {
+  if (!user) return window.location.href = "/login";
+  const r = await api(`/events/${eventId}/like`, "POST");
+  if (!r.ok) return Toast.show(r.data.error, "error");
+  isLiked = r.data.liked;
+  if (eventData) eventData.likes = r.data.likes;
+  document.getElementById("likeCount").textContent = r.data.likes;
+  updateLikeBtn();
+  Toast.show(isLiked ? "Liked!" : "Unliked.", isLiked ? "success" : "info");
+}
+
+async function toggleBookmark() {
+  if (!user) return window.location.href = "/login";
+  const r = await api(`/events/${eventId}/bookmark`, "POST");
+  if (!r.ok) return Toast.show(r.data.error, "error");
+  isBookmarked = r.data.bookmarked;
+  updateBookmarkBtn();
+  Toast.show(isBookmarked ? "Bookmarked!" : "Removed bookmark.", isBookmarked ? "success" : "info");
+}
+
+async function sendHostMsg() {
+  const text = document.getElementById("hostMsgInput").value.trim();
+  if (!text) return Toast.show("Please write a message.", "warning");
+  const r = await api("/messages", "POST", { eventId, text, recipientId: hostId });
+  if (!r.ok) return Toast.show(r.data.error, "error");
+  Toast.show("Message sent to host!", "success");
+  document.getElementById("hostMsgInput").value = "";
+  // Link to full conversation
+  setTimeout(() => {
+    if (confirm("Message sent! Go to your messages to continue the conversation?")) {
+      window.location.href = `/messages?event=${eventId}&other=${hostId}&name=${encodeURIComponent(eventData?.hostName||"Host")}&title=${encodeURIComponent(eventData?.title||"Event")}`;
+    }
+  }, 400);
+}
+
+loadEvent();
+</script>
+</body>
+</html>

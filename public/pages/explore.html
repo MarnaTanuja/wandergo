@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Explore — WanderGo</title>
+<link rel="stylesheet" href="/css/shared.css"/>
+<style>
+.explore-hero {
+  background: linear-gradient(135deg, #0a0f19 0%, #095f56 100%);
+  padding: 72px 0 56px; text-align: center; color: white;
+}
+.explore-hero h1 { color: white; font-size: clamp(2.2rem, 4vw, 3.4rem); margin-bottom: 14px; }
+.explore-hero p { color: rgba(255,255,255,0.65); font-size: 1rem; margin-bottom: 36px; }
+.explore-search {
+  background: white; border-radius: 10px; padding: 6px 6px 6px 24px;
+  display: flex; gap: 8px; align-items: center;
+  max-width: 600px; margin: 0 auto 28px;
+  box-shadow: var(--shadow-xl);
+}
+.explore-search input { flex: 1; border: none; outline: none; font-size: 0.98rem; font-family: 'Outfit', sans-serif; color: var(--ink); }
+.dest-chips { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.dest-chip {
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px; padding: 8px 18px; font-size: 0.82rem; cursor: pointer;
+  color: white; transition: all 0.2s;
+}
+.dest-chip:hover { background: rgba(255,255,255,0.22); }
+
+/* Location result */
+.location-result { background: white; border-bottom: 1px solid var(--border); }
+.location-hero-img {
+  height: 380px; position: relative; overflow: hidden;
+  background: var(--surface);
+}
+.location-hero-img img { width: 100%; height: 100%; object-fit: cover; }
+.location-hero-img::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);
+}
+.location-hero-text {
+  position: absolute; bottom: 32px; left: 0; right: 0;
+  padding: 0 48px; color: white; z-index: 1;
+}
+.location-hero-text h2 { font-size: 2.4rem; color: white; margin-bottom: 8px; }
+.location-hero-text p { color: rgba(255,255,255,0.8); max-width: 680px; font-size: 0.95rem; line-height: 1.7; }
+
+.loc-tabs-bar {
+  border-bottom: 1px solid var(--border); background: white;
+  display: flex; overflow-x: auto; sticky; top: 66px; z-index: 10;
+}
+.loc-tab {
+  padding: 14px 24px; border: none; background: none; cursor: pointer;
+  font-size: 0.875rem; font-weight: 600; color: var(--ink-muted); white-space: nowrap;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  font-family: 'Outfit', sans-serif; transition: all 0.2s;
+}
+.loc-tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+.loc-tab:hover:not(.active) { color: var(--ink); }
+
+.loc-tab-content { padding: 40px 0; }
+
+/* Reviews */
+.review-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; }
+.review-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.review-author { display: flex; align-items: center; gap: 10px; }
+.review-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--teal), var(--teal-light));
+  color: white; font-size: 0.85rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.review-stars { color: var(--amber); letter-spacing: 1px; }
+.review-text { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.7; margin-bottom: 8px; }
+.review-date { font-size: 0.76rem; color: var(--ink-muted); }
+
+/* Review form */
+.review-form-box {
+  background: white; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 28px; margin-top: 24px;
+}
+.star-input { display: flex; gap: 6px; margin-bottom: 16px; }
+.star-input span { font-size: 2rem; cursor: pointer; color: var(--border); transition: color 0.15s; }
+.star-input span.active, .star-input span:hover { color: var(--amber); }
+
+.wl-btn-active { color: var(--red) !important; border-color: var(--red) !important; }
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar"></nav>
+
+<!-- EXPLORE HERO -->
+<div class="explore-hero">
+  <div class="container">
+    <h1>Explore Any Place on Earth</h1>
+    <p>Search a destination to discover its story, hotels, attractions, events and traveler reviews.</p>
+    <div class="explore-search">
+      <input type="text" id="locationInput" placeholder="Search a city, country or landmark…" onkeydown="if(event.key==='Enter')exploreLocation()"/>
+      <button class="btn btn-primary" onclick="exploreLocation()">Explore</button>
+    </div>
+    <div class="dest-chips">
+      <span class="dest-chip" onclick="quickExplore('Paris')">Paris</span>
+      <span class="dest-chip" onclick="quickExplore('Bali')">Bali</span>
+      <span class="dest-chip" onclick="quickExplore('Tokyo')">Tokyo</span>
+      <span class="dest-chip" onclick="quickExplore('Santorini')">Santorini</span>
+      <span class="dest-chip" onclick="quickExplore('Rajasthan')">Rajasthan</span>
+      <span class="dest-chip" onclick="quickExplore('New York')">New York</span>
+    </div>
+  </div>
+</div>
+
+<!-- LOCATION RESULT -->
+<div id="locationResult" style="display:none">
+  <div class="location-hero-img" id="locHeroImg">
+    <img id="locHeroImgEl" src="" alt=""/>
+    <div class="location-hero-text">
+      <h2 id="locTitle"></h2>
+      <p id="locDesc"></p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div id="locRating" style="font-size:0.88rem;color:var(--ink-muted)"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost btn-sm" id="wlBtn" onclick="toggleWishlist()">Save to Wishlist</button>
+        <a href="/events" id="locEventsLink" class="btn btn-primary btn-sm">View Events Here</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="loc-tabs-bar" id="locTabsBar">
+    <button class="loc-tab active" onclick="switchTab('hotels',this)">Hotels</button>
+    <button class="loc-tab" onclick="switchTab('attractions',this)">Attractions</button>
+    <button class="loc-tab" onclick="switchTab('events',this)">Nearby Events</button>
+    <button class="loc-tab" onclick="switchTab('reviews',this)">Reviews</button>
+  </div>
+
+  <div class="container">
+    <div id="hotelsTab" class="loc-tab-content">
+      <div class="grid-4" id="hotelsList"></div>
+    </div>
+    <div id="attractionsTab" class="loc-tab-content" style="display:none">
+      <div class="grid-4" id="attractionsList"></div>
+    </div>
+    <div id="eventsTab" class="loc-tab-content" style="display:none">
+      <div class="grid-3" id="nearbyEvents"></div>
+    </div>
+    <div id="reviewsTab" class="loc-tab-content" style="display:none">
+      <div id="reviewsList"></div>
+      <div class="review-form-box" id="reviewFormBox" style="display:none">
+        <h3 style="font-size:1.2rem;margin-bottom:16px">Write a Review</h3>
+        <div class="star-input" id="starInput">
+          <span onclick="setRating(1)">★</span><span onclick="setRating(2)">★</span>
+          <span onclick="setRating(3)">★</span><span onclick="setRating(4)">★</span>
+          <span onclick="setRating(5)">★</span>
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <textarea id="reviewText" placeholder="Share your experience of this destination…" style="height:110px"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="submitReview()">Post Review</button>
+      </div>
+      <div id="loginPrompt" style="display:none;text-align:center;padding:32px">
+        <p style="color:var(--ink-muted);margin-bottom:14px">Sign in to leave a review.</p>
+        <a href="/login" class="btn btn-primary btn-sm">Sign In</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer"><div class="container"><div class="footer-brand">WanderGo</div><div class="footer-copy">© 2025 WanderGo</div></div></footer>
+<script src="/js/shared.js"></script>
+<script>
+buildNavbar("Explore");
+
+const user = Auth.getUser();
+let currentLocation = null;
+let currentRating = 0;
+let userWishlist = [];
+
+// Load wishlist from server
+async function loadWishlist() {
+  if (!user) return;
+  const r = await api("/auth/wishlist");
+  if (r.ok) userWishlist = r.data.wishlist || [];
+}
+loadWishlist();
+
+// Check URL param
+const urlQ = new URLSearchParams(window.location.search).get("q");
+if (urlQ) { document.getElementById("locationInput").value = urlQ; quickExplore(urlQ); }
+
+function quickExplore(place) {
+  document.getElementById("locationInput").value = place;
+  exploreLocation();
+}
+
+async function exploreLocation() {
+  const query = document.getElementById("locationInput").value.trim();
+  if (!query) return Toast.show("Enter a location name.", "warning");
+  currentLocation = query; currentRating = 0;
+
+  const result = document.getElementById("locationResult");
+  result.style.display = "block";
+  result.scrollIntoView({ behavior: "smooth" });
+
+  document.getElementById("locTitle").textContent = query;
+  document.getElementById("locDesc").textContent = "Loading…";
+  document.getElementById("locHeroImgEl").src = "";
+  document.getElementById("hotelsList").innerHTML = skeletonCards(4);
+  document.getElementById("attractionsList").innerHTML = skeletonCards(4);
+  document.getElementById("nearbyEvents").innerHTML = skeletonCards(3);
+
+  // Update wishlist button
+  updateWlBtn();
+
+  const [infoRes, evRes, revRes] = await Promise.all([
+    api("/location/info?query=" + encodeURIComponent(query)),
+    api("/events?query=" + encodeURIComponent(query) + "&limit=6"),
+    api("/reviews?location=" + encodeURIComponent(query)),
+  ]);
+
+  const info = infoRes.data;
+  document.getElementById("locTitle").textContent = info.location || query;
+  document.getElementById("locDesc").textContent = info.description || "";
+  if (info.image) document.getElementById("locHeroImgEl").src = info.image;
+  document.getElementById("locEventsLink").href = `/events?q=${encodeURIComponent(query)}`;
+
+  // Hotels
+  document.getElementById("hotelsList").innerHTML = (info.hotels || []).map(h => `
+    <div class="place-card">
+      <img src="${h.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=75'}" alt="${h.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=75'"/>
+      <div class="place-card-body">
+        <strong>${h.name}</strong>
+        <small>${h.address}</small>
+        <div class="rating">${'★'.repeat(h.rating || 4)}${'☆'.repeat(5 - (h.rating || 4))}</div>
+      </div>
+    </div>`).join("") || `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🏨</div><p>No hotels found.</p></div>`;
+
+  // Attractions
+  document.getElementById("attractionsList").innerHTML = (info.attractions || []).map(a => `
+    <div class="place-card">
+      <img src="${a.image || 'https://images.unsplash.com/photo-1519817650390-64a93db51149?w=400&q=75'}" alt="${a.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1519817650390-64a93db51149?w=400&q=75'"/>
+      <div class="place-card-body">
+        <strong>${a.name}</strong>
+        <small>${a.address}</small>
+      </div>
+    </div>`).join("") || `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📍</div><p>No attractions found.</p></div>`;
+
+  // Events
+  const evs = evRes.data?.events || [];
+  document.getElementById("nearbyEvents").innerHTML = evs.length
+    ? evs.map(ev => eventCardHTML(ev)).join("")
+    : `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🎉</div><h3>No events yet</h3><p>No events in ${query} yet.</p></div>`;
+
+  // Reviews
+  renderReviews(revRes.data);
+  const avg = revRes.data?.averageRating;
+  document.getElementById("locRating").textContent = avg
+    ? `${'★'.repeat(Math.round(avg))} ${avg} average rating (${revRes.data.total} reviews)`
+    : "No reviews yet. Be the first!";
+
+  // Show review form or login prompt
+  document.getElementById("reviewFormBox").style.display = user ? "block" : "none";
+  document.getElementById("loginPrompt").style.display = user ? "none" : "block";
+
+  updateWlBtn();
+}
+
+function updateWlBtn() {
+  const btn = document.getElementById("wlBtn");
+  if (!btn || !currentLocation) return;
+  const inWL = userWishlist.includes(currentLocation);
+  btn.textContent = inWL ? "Wishlisted ♥" : "Save to Wishlist";
+  btn.className = "btn btn-sm " + (inWL ? "wl-btn-active btn-ghost" : "btn-ghost");
+}
+
+async function toggleWishlist() {
+  if (!user) return window.location.href = "/login";
+  const r = await api("/auth/wishlist", "PATCH", { location: currentLocation });
+  if (r.ok) {
+    userWishlist = r.data.wishlist;
+    updateWlBtn();
+    const inWL = userWishlist.includes(currentLocation);
+    Toast.show(inWL ? "Added to wishlist!" : "Removed from wishlist.", inWL ? "success" : "info");
+  }
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll(".loc-tab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  ["hotelsTab","attractionsTab","eventsTab","reviewsTab"].forEach(id => {
+    document.getElementById(id).style.display = id === tab + "Tab" ? "block" : "none";
+  });
+}
+
+function setRating(n) {
+  currentRating = n;
+  document.querySelectorAll("#starInput span").forEach((s, i) => {
+    s.className = i < n ? "active" : "";
+  });
+}
+
+async function submitReview() {
+  if (!currentLocation) return Toast.show("Explore a location first.", "warning");
+  if (!currentRating) return Toast.show("Please select a star rating.", "warning");
+  const text = document.getElementById("reviewText").value.trim();
+  if (!text) return Toast.show("Please write something.", "warning");
+
+  const r = await api("/reviews", "POST", { location: currentLocation, rating: currentRating, text });
+  if (!r.ok) return Toast.show(r.data.error, "error");
+
+  Toast.show("Review posted!", "success");
+  document.getElementById("reviewText").value = ""; setRating(0);
+
+  const revRes = await api("/reviews?location=" + encodeURIComponent(currentLocation));
+  renderReviews(revRes.data);
+}
+
+function renderReviews(data) {
+  const list = document.getElementById("reviewsList");
+  if (!data?.reviews?.length) { list.innerHTML = `<div class="empty-state"><div class="empty-icon">⭐</div><h3>No reviews yet</h3><p>Be the first to share your experience!</p></div>`; return; }
+  list.innerHTML = data.reviews.map(r => `
+    <div class="review-card">
+      <div class="review-head">
+        <div class="review-author">
+          <div class="review-avatar">${r.authorName?.[0]?.toUpperCase() || 'U'}</div>
+          <div><strong style="font-size:0.9rem">${r.authorName}</strong><div class="review-date">${formatDate(r.createdAt)}</div></div>
+        </div>
+        <div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+      </div>
+      <p class="review-text">${r.text}</p>
+    </div>`).join("");
+}
+</script>
+</body>
+</html>

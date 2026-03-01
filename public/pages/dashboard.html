@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Dashboard — WanderGo</title>
+<link rel="stylesheet" href="/css/shared.css"/>
+<style>
+body { background: var(--surface); }
+.dashboard-layout { display: grid; grid-template-columns: 240px 1fr; gap: 28px; align-items: start; }
+.sidebar { background: white; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; position: sticky; top: 90px; }
+.sidebar-user { padding: 24px; text-align: center; border-bottom: 1px solid var(--border); }
+.sidebar-avatar {
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 12px;
+  background: linear-gradient(135deg, var(--teal), var(--teal-light));
+  color: white; font-size: 1.4rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.sidebar-name { font-size: 0.95rem; font-weight: 700; }
+.sidebar-role { font-size: 0.78rem; color: var(--ink-muted); margin-top: 2px; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px; font-size: 0.875rem; font-weight: 500;
+  color: var(--ink-muted); border-left: 3px solid transparent;
+  transition: all 0.15s;
+}
+.sidebar-nav a:hover { background: var(--surface); color: var(--ink); }
+.sidebar-nav a.active { background: rgba(13,122,110,0.06); color: var(--teal); border-left-color: var(--teal); }
+.dash-panel { display: none; }
+.dash-panel.active { display: block; }
+.dash-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+.dash-card h3 { font-size: 1.1rem; margin-bottom: 16px; }
+.booking-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.booking-row:last-child { border-bottom: none; }
+.booking-img { width: 60px; height: 50px; border-radius: var(--radius-sm); object-fit: cover; background: var(--surface); flex-shrink: 0; }
+.booking-info { flex: 1; }
+.booking-info strong { display: block; font-size: 0.9rem; margin-bottom: 2px; }
+.booking-info small { font-size: 0.76rem; color: var(--ink-muted); }
+.wishlist-chip {
+  display: flex; align-items: center; gap: 12px;
+  background: white; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 16px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s;
+}
+.wishlist-chip:hover { border-color: var(--teal); }
+.wishlist-chip-icon { font-size: 1.4rem; }
+.wishlist-chip-info strong { display: block; font-size: 0.9rem; }
+.wishlist-chip-info small { font-size: 0.76rem; color: var(--ink-muted); }
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar"></nav>
+<div class="section">
+  <div class="container">
+    <div class="dashboard-layout">
+      <div class="sidebar">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebarInitial">U</div>
+          <div class="sidebar-name" id="sidebarName">Loading…</div>
+          <div class="sidebar-role">Traveler</div>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#" class="active" onclick="showPanel('bookings',this)">My Bookings</a>
+          <a href="#" onclick="showPanel('liked',this)">Liked Events</a>
+          <a href="#" onclick="showPanel('wishlist',this)">Wishlist</a>
+          <a href="/messages">Messages</a>
+          <a href="#" onclick="showPanel('profile',this)">Profile Settings</a>
+        </nav>
+      </div>
+      <div>
+        <div class="dash-panel active" id="panel-bookings">
+          <div class="dash-card">
+            <h3>My Bookings</h3>
+            <div id="bookingsList"></div>
+          </div>
+        </div>
+        <div class="dash-panel" id="panel-liked">
+          <div class="dash-card">
+            <h3>Liked Events</h3>
+            <div class="grid-3" id="likedGrid"></div>
+          </div>
+        </div>
+        <div class="dash-panel" id="panel-wishlist">
+          <div class="dash-card">
+            <h3>My Wishlist</h3>
+            <p style="font-size:0.85rem;color:var(--ink-muted);margin-bottom:16px">Locations you have saved. Click to explore.</p>
+            <div id="wishlistItems"></div>
+          </div>
+        </div>
+        <div class="dash-panel" id="panel-profile">
+          <div class="dash-card">
+            <h3>Profile Settings</h3>
+            <div id="profileMsg" class="form-msg"></div>
+            <div class="field"><label>Full Name</label><input type="text" id="profileName"/></div>
+            <div class="field"><label>Bio</label><textarea id="profileBio" placeholder="Tell others about yourself…" style="height:90px"></textarea></div>
+            <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/js/shared.js"></script>
+<script>
+if (!Auth.requireAuth("traveler")) throw "";
+buildNavbar();
+const user = Auth.getUser();
+document.getElementById("sidebarName").textContent = user.name;
+document.getElementById("sidebarInitial").textContent = user.name[0].toUpperCase();
+document.getElementById("profileName").value = user.name;
+
+function showPanel(name, link) {
+  document.querySelectorAll(".dash-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".sidebar-nav a").forEach(a => a.classList.remove("active"));
+  document.getElementById("panel-" + name)?.classList.add("active");
+  if (link) link.classList.add("active");
+  if (name === "bookings") loadBookings();
+  if (name === "liked") loadLiked();
+  if (name === "wishlist") loadWishlist();
+}
+
+async function loadBookings() {
+  const r = await api("/bookings/my");
+  const list = document.getElementById("bookingsList");
+  if (!r.ok || !r.data.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🎟</div><h3>No bookings yet</h3><p>Find an event and book it!</p><a href="/events" class="btn btn-primary btn-sm" style="margin-top:14px">Browse Events</a></div>`;
+    return;
+  }
+  list.innerHTML = r.data.map(b => {
+    const ev = b.event; if (!ev) return "";
+    const img = ev.image || "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=200&q=70";
+    const isPast = new Date(ev.date) < new Date();
+    const badgeClass = b.status === "cancelled" ? "badge-red" : isPast ? "badge-amber" : "badge-teal";
+    const badgeText = b.status === "cancelled" ? "Cancelled" : isPast ? "Completed" : "Confirmed";
+    return `
+      <div class="booking-row" style="flex-wrap:wrap">
+        <img class="booking-img" src="${img}" alt="" onerror="this.src='https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=200&q=70'"/>
+        <div class="booking-info" style="flex:1;min-width:200px">
+          <strong><a href="/event-detail?id=${ev._id}">${ev.title}</a></strong>
+          <small>📍 ${ev.location?.city || ""} &nbsp;|&nbsp; 🗓 ${formatDate(ev.date)}</small>
+          <small style="display:block;margin-top:3px">
+            👥 ${b.attendees} attendee${b.attendees > 1 ? "s" : ""}
+            &nbsp;|&nbsp; 💰 ${b.totalPrice > 0 ? "₹" + b.totalPrice.toLocaleString() : "Free"}
+            ${b.travelerPhone ? "&nbsp;|&nbsp; 📞 " + b.travelerPhone : ""}
+          </small>
+          ${b.specialRequests ? `<small style="display:block;margin-top:3px;color:var(--teal)">Note: ${b.specialRequests}</small>` : ""}
+          <small style="display:block;margin-top:3px;color:var(--ink-muted)">Booked ${formatDate(b.createdAt)}</small>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <span class="badge ${badgeClass}">${badgeText}</span>
+          ${b.status !== "cancelled" && !isPast ? `<button class="btn btn-sm btn-ghost" onclick="cancelBooking('${b._id}')">Cancel</button>` : ""}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function cancelBooking(id) {
+  if (!confirm("Cancel this booking?")) return;
+  const r = await api("/bookings/" + id, "DELETE");
+  if (!r.ok) return Toast.show(r.data.error, "error");
+  Toast.show("Booking cancelled.", "info");
+  loadBookings();
+}
+
+async function loadLiked() {
+  const meRes = await api("/auth/me");
+  const grid = document.getElementById("likedGrid");
+  const likedIds = meRes.data?.user?.likedEvents || [];
+  if (!likedIds.length) { grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">♥</div><h3>No liked events</h3><p>Like events to save them here.</p></div>`; return; }
+  // Show liked event cards
+  grid.innerHTML = skeletonCards(3);
+  // Fetch each event (simple approach)
+  const results = await Promise.all(likedIds.slice(0, 9).map(id => api("/events/" + id)));
+  grid.innerHTML = results.filter(r => r.ok).map(r => eventCardHTML(r.data.event)).join("") || `<div class="empty-state" style="grid-column:1/-1"><p>Could not load events.</p></div>`;
+}
+
+async function loadWishlist() {
+  const r = await api("/auth/wishlist");
+  const container = document.getElementById("wishlistItems");
+  if (!r.ok || !r.data.wishlist.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🗺</div><h3>No saved locations</h3><p>Explore a destination and add it to your wishlist.</p><a href="/explore" class="btn btn-primary btn-sm" style="margin-top:14px">Explore Places</a></div>`;
+    return;
+  }
+  container.innerHTML = r.data.wishlist.map(loc => `
+    <div class="wishlist-chip" onclick="window.location='/explore?q=${encodeURIComponent(loc)}'">
+      <div class="wishlist-chip-icon">📍</div>
+      <div class="wishlist-chip-info"><strong>${loc}</strong><small>Tap to explore</small></div>
+      <button class="btn btn-sm btn-ghost" style="margin-left:auto" onclick="event.stopPropagation();removeWishlist('${loc}')">Remove</button>
+    </div>`).join("");
+}
+
+async function removeWishlist(loc) {
+  await api("/auth/wishlist", "PATCH", { location: loc });
+  loadWishlist();
+  Toast.show("Removed from wishlist.", "info");
+}
+
+async function saveProfile() {
+  const name = document.getElementById("profileName").value.trim();
+  const bio = document.getElementById("profileBio").value.trim();
+  const r = await api("/auth/profile", "PATCH", { name, bio });
+  if (!r.ok) return Toast.show(r.data.error, "error");
+  Auth.setSession(Auth.getToken(), { ...user, name: r.data.user.name });
+  Toast.show("Profile updated!", "success");
+}
+
+loadBookings();
+</script>
+</body>
+</html>

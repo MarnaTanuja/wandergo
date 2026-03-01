@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Events — WanderGo</title>
+<link rel="stylesheet" href="/css/shared.css"/>
+<style>
+.events-layout { display: grid; grid-template-columns: 260px 1fr; gap: 32px; }
+.filters-panel { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; height: fit-content; position: sticky; top: 90px; }
+.filter-section { margin-bottom: 24px; }
+.filter-section h4 { font-family: 'Outfit', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 12px; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-chip { padding: 5px 12px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 0.78rem; font-weight: 500; cursor: pointer; transition: all 0.15s; color: var(--ink-muted); background: white; }
+.filter-chip:hover, .filter-chip.active { border-color: var(--teal); color: var(--teal); background: rgba(13,122,110,0.05); }
+.sort-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.sort-bar label { font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; }
+.search-bar-row { display: flex; gap: 10px; margin-bottom: 24px; }
+.search-bar-row input { flex: 1; padding: 11px 18px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); outline: none; font-size: 0.92rem; font-family: 'Outfit', sans-serif; color: var(--ink); }
+.search-bar-row input:focus { border-color: var(--teal); }
+@media(max-width:900px){ .events-layout { grid-template-columns: 1fr; } .filters-panel { position: static; } }
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar"></nav>
+
+<div class="page-header">
+  <div class="container">
+    <h1>Explore Events</h1>
+    <p>Discover unique travel experiences hosted by experts around the world.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="search-bar-row">
+      <input type="text" id="searchInput" placeholder="Search events, cities, or keywords…" oninput="onSearch()"/>
+      <button class="btn btn-primary" onclick="onSearch()">Search</button>
+    </div>
+    <div class="events-layout">
+      <!-- FILTERS -->
+      <div class="filters-panel">
+        <h3 style="font-size:1.1rem;margin-bottom:20px">Filters</h3>
+        <div class="filter-section">
+          <h4>Category</h4>
+          <div class="filter-chips" id="catChips">
+            <button class="filter-chip active" data-cat="" onclick="setFilter('category','',this)">All</button>
+            <button class="filter-chip" data-cat="adventure" onclick="setFilter('category','adventure',this)">Adventure</button>
+            <button class="filter-chip" data-cat="culture" onclick="setFilter('category','culture',this)">Culture</button>
+            <button class="filter-chip" data-cat="food" onclick="setFilter('category','food',this)">Food</button>
+            <button class="filter-chip" data-cat="music" onclick="setFilter('category','music',this)">Music</button>
+            <button class="filter-chip" data-cat="sports" onclick="setFilter('category','sports',this)">Sports</button>
+            <button class="filter-chip" data-cat="wellness" onclick="setFilter('category','wellness',this)">Wellness</button>
+          </div>
+        </div>
+        <div class="filter-section">
+          <h4>Sort By</h4>
+          <div class="filter-chips" id="sortChips">
+            <button class="filter-chip active" onclick="setFilter('sort','newest',this)">Newest</button>
+            <button class="filter-chip" onclick="setFilter('sort','popular',this)">Most Liked</button>
+            <button class="filter-chip" onclick="setFilter('sort','views',this)">Most Viewed</button>
+            <button class="filter-chip" onclick="setFilter('sort','upcoming',this)">Upcoming</button>
+            <button class="filter-chip" onclick="setFilter('sort','price_asc',this)">Price: Low</button>
+            <button class="filter-chip" onclick="setFilter('sort','price_desc',this)">Price: High</button>
+          </div>
+        </div>
+        <div class="filter-section">
+          <h4>Price Range</h4>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="minPrice" placeholder="Min" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:5px;font-family:'Outfit',sans-serif;outline:none" oninput="loadEvents()"/>
+            <span style="color:var(--ink-muted)">—</span>
+            <input type="number" id="maxPrice" placeholder="Max" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:5px;font-family:'Outfit',sans-serif;outline:none" oninput="loadEvents()"/>
+          </div>
+        </div>
+        <div class="filter-section">
+          <h4>Date</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <input type="date" id="dateFrom" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:5px;font-family:'Outfit',sans-serif;outline:none" oninput="loadEvents()"/>
+            <input type="date" id="dateTo" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:5px;font-family:'Outfit',sans-serif;outline:none" oninput="loadEvents()"/>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-full" onclick="resetFilters()">Clear All Filters</button>
+      </div>
+
+      <!-- RESULTS -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+          <div id="resultsCount" style="font-size:0.88rem;color:var(--ink-muted)"></div>
+        </div>
+        <div class="grid-3" id="eventsGrid"></div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="container"><div class="footer-brand">WanderGo</div><div class="footer-copy">© 2025 WanderGo</div></div></footer>
+<script src="/js/shared.js"></script>
+<script>
+buildNavbar("Events");
+
+const params = { query: "", category: "", sort: "newest", minPrice: "", maxPrice: "", dateFrom: "", dateTo: "" };
+let currentPage = 1;
+
+// Pre-fill search from URL
+const urlQ = new URLSearchParams(window.location.search).get("q");
+if (urlQ) { document.getElementById("searchInput").value = urlQ; params.query = urlQ; }
+
+function setFilter(key, value, btn) {
+  params[key] = value; currentPage = 1;
+  btn.closest(".filter-chips")?.querySelectorAll(".filter-chip").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  loadEvents();
+}
+
+const onSearch = debounce(() => {
+  params.query = document.getElementById("searchInput").value.trim();
+  currentPage = 1;
+  loadEvents();
+}, 350);
+
+function resetFilters() {
+  Object.keys(params).forEach(k => params[k] = "");
+  params.sort = "newest"; currentPage = 1;
+  document.getElementById("searchInput").value = "";
+  document.getElementById("minPrice").value = "";
+  document.getElementById("maxPrice").value = "";
+  document.getElementById("dateFrom").value = "";
+  document.getElementById("dateTo").value = "";
+  document.querySelectorAll(".filter-chip").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".filter-chip")[0]?.classList.add("active");
+  loadEvents();
+}
+
+async function loadEvents(page = currentPage) {
+  currentPage = page;
+  const grid = document.getElementById("eventsGrid");
+  grid.innerHTML = skeletonCards(6);
+
+  const qs = new URLSearchParams({
+    page,
+    limit: 9,
+    query: params.query || "",
+    sort: params.sort || "newest",
+  });
+
+  if (params.category) qs.append("category", params.category);
+  if (params.minPrice) qs.append("minPrice", params.minPrice);
+  if (params.maxPrice) qs.append("maxPrice", params.maxPrice);
+  if (params.dateFrom) qs.append("dateFrom", params.dateFrom);
+  if (params.dateTo) qs.append("dateTo", params.dateTo);
+
+  const r = await api("/events?" + qs.toString());
+
+  if (!r.ok || !r.data.events?.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h3>No events found</h3><p>Try adjusting your filters.</p></div>`;
+    document.getElementById("pagination").innerHTML = "";
+    document.getElementById("resultsCount").textContent = "0 events found";
+    return;
+  }
+
+  const { events, total, totalPages } = r.data;
+  document.getElementById("resultsCount").textContent = `${total} event${total !== 1 ? "s" : ""} found`;
+  grid.innerHTML = events.map(ev => eventCardHTML(ev)).join("");
+
+  const pg = document.getElementById("pagination");
+  pg.innerHTML = totalPages > 1
+    ? Array.from({ length: totalPages }, (_, i) =>
+        `<button class="page-btn${i + 1 === page ? " active" : ""}" onclick="loadEvents(${i + 1})">${i + 1}</button>`
+      ).join("")
+    : "";
+}
+
+loadEvents();
+</script>
+</body>
+</html>

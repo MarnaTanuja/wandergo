@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Create Account — WanderGo</title>
+<link rel="stylesheet" href="/css/shared.css"/>
+<style>
+body { background: var(--surface); }
+.auth-page { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+.auth-visual {
+  background: url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1200&q=85') center/cover no-repeat;
+  position: relative;
+}
+.auth-visual::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(145deg, rgba(10,15,25,0.82), rgba(9,95,86,0.65));
+}
+.auth-visual-content { position: relative; z-index: 1; padding: 48px; display: flex; flex-direction: column; height: 100%; }
+.auth-visual-brand { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 700; color: white; }
+.auth-visual-brand span { font-weight: 400; opacity: 0.7; }
+.auth-visual-body { margin-top: auto; margin-bottom: auto; }
+.auth-visual-body h2 { font-size: 2.8rem; color: white; margin-bottom: 16px; }
+.auth-visual-body p { color: rgba(255,255,255,0.7); font-size: 1rem; line-height: 1.75; max-width: 380px; }
+.auth-panel { background: white; display: flex; align-items: center; justify-content: center; padding: 48px; overflow-y: auto; }
+.auth-form { width: 100%; max-width: 420px; }
+.auth-form-header { margin-bottom: 28px; }
+.auth-form-header a { font-size: 0.85rem; color: var(--ink-muted); display: inline-block; margin-bottom: 20px; }
+.auth-form-header a:hover { color: var(--teal); }
+.auth-form-header h1 { font-size: 2rem; margin-bottom: 6px; }
+.auth-form-header p { color: var(--ink-muted); font-size: 0.9rem; }
+.role-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.role-option {
+  border: 2px solid var(--border); border-radius: var(--radius-sm);
+  padding: 16px; cursor: pointer; text-align: center; transition: all 0.2s;
+  background: white;
+}
+.role-option:hover { border-color: var(--teal); }
+.role-option.active { border-color: var(--teal); background: rgba(13,122,110,0.05); }
+.role-option .role-icon { font-size: 1.6rem; margin-bottom: 6px; }
+.role-option strong { display: block; font-size: 0.88rem; }
+.role-option small { font-size: 0.75rem; color: var(--ink-muted); }
+.auth-footer { text-align: center; margin-top: 18px; font-size: 0.875rem; color: var(--ink-muted); }
+.auth-footer a { color: var(--teal); font-weight: 600; }
+@media(max-width:800px){ .auth-page { grid-template-columns: 1fr; } .auth-visual { display: none; } }
+</style>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-visual">
+    <div class="auth-visual-content">
+      <div class="auth-visual-brand">Wander<span>Go</span></div>
+      <div class="auth-visual-body">
+        <h2>Your Journey Begins Here</h2>
+        <p>Create your free account and join thousands of travelers discovering extraordinary events around the world.</p>
+      </div>
+    </div>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-form">
+      <div class="auth-form-header">
+        <a href="/">← Back to WanderGo</a>
+        <h1>Create Account</h1>
+        <p>Already have an account? <a href="/login">Sign in</a></p>
+      </div>
+      <div id="formMsg" class="form-msg"></div>
+      <div style="margin-bottom:20px">
+        <div style="font-size:0.82rem;font-weight:600;color:var(--ink-soft);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:10px">I am a</div>
+        <div class="role-picker">
+          <div class="role-option active" id="roleT" onclick="selectRole('traveler')">
+            <div class="role-icon">🌍</div>
+            <strong>Traveler</strong>
+            <small>Discover & book events</small>
+          </div>
+          <div class="role-option" id="roleH" onclick="selectRole('host')">
+            <div class="role-icon">🏠</div>
+            <strong>Host</strong>
+            <small>Create & manage events</small>
+          </div>
+        </div>
+      </div>
+      <div class="field"><label>Full Name</label><input type="text" id="name" placeholder="Your full name" autocomplete="name"/></div>
+      <div class="field"><label>Email Address</label><input type="email" id="email" placeholder="you@example.com" autocomplete="email"/></div>
+      <div class="field"><label>Password</label><input type="password" id="password" placeholder="Min 6 characters" autocomplete="new-password"/></div>
+      <button class="btn btn-primary btn-full" id="submitBtn" onclick="handleRegister()">Create Account</button>
+      <div class="auth-footer">
+        Already have an account? <a href="/login">Sign in</a>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/js/shared.js"></script>
+<script>
+if (Auth.isLoggedIn()) window.location.href = "/";
+
+let selectedRole = "traveler";
+
+function selectRole(role) {
+  selectedRole = role;
+  document.getElementById("roleT").classList.toggle("active", role === "traveler");
+  document.getElementById("roleH").classList.toggle("active", role === "host");
+}
+
+// Now urlRole check comes AFTER the function
+const urlRole = new URLSearchParams(window.location.search).get("role");
+if (urlRole === "host") selectRole("host");
+
+async function handleRegister() {
+  const name = document.getElementById("name").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("formMsg");
+  const btn = document.getElementById("submitBtn");
+
+  msg.className = "form-msg"; msg.textContent = "";
+
+  if (!name || !email || !password) { msg.className = "form-msg error"; msg.textContent = "Please fill in all fields."; return; }
+  if (password.length < 6) { msg.className = "form-msg error"; msg.textContent = "Password must be at least 6 characters."; return; }
+
+  btn.textContent = "Creating account…"; btn.disabled = true;
+  const r = await api("/auth/register", "POST", { name, email, password, role: selectedRole });
+  btn.textContent = "Create Account"; btn.disabled = false;
+
+  if (!r.ok) { msg.className = "form-msg error"; msg.textContent = r.data.error; return; }
+
+  Auth.setSession(r.data.token, r.data.user);
+  Toast.show("Account created! Welcome to WanderGo.", "success");
+  setTimeout(() => window.location.href = selectedRole === "host" ? "/host-dashboard" : "/dashboard", 900);
+}
+</script>
+</body>
+</html>

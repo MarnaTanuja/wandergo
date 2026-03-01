@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sign In — WanderGo</title>
+<link rel="stylesheet" href="/css/shared.css"/>
+<style>
+body { background: var(--surface); }
+.auth-page {
+  min-height: 100vh; display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.auth-visual {
+  background: url('https://images.unsplash.com/photo-1500259783852-0ca9ce8a64dc?w=1200&q=85') center/cover no-repeat;
+  position: relative;
+}
+.auth-visual::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(145deg, rgba(9,95,86,0.88), rgba(10,15,25,0.75));
+}
+.auth-visual-content {
+  position: relative; z-index: 1; padding: 48px;
+  display: flex; flex-direction: column; height: 100%;
+}
+.auth-visual-brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem; font-weight: 700; color: white;
+}
+.auth-visual-brand span { font-weight: 400; opacity: 0.7; }
+.auth-visual-body { margin-top: auto; margin-bottom: auto; }
+.auth-visual-body h2 { font-size: 2.8rem; color: white; margin-bottom: 16px; }
+.auth-visual-body p { color: rgba(255,255,255,0.7); font-size: 1rem; line-height: 1.75; max-width: 380px; }
+.auth-testimonial {
+  margin-top: 40px; padding: 20px; border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--radius); color: white; max-width: 380px;
+}
+.auth-testimonial p { font-size: 0.88rem; opacity: 0.8; margin-bottom: 10px; font-style: italic; }
+.auth-testimonial strong { font-size: 0.78rem; opacity: 0.6; }
+.auth-panel {
+  background: white; display: flex; align-items: center; justify-content: center;
+  padding: 48px;
+}
+.auth-form { width: 100%; max-width: 400px; }
+.auth-form-header { margin-bottom: 32px; }
+.auth-form-header a {
+  font-size: 0.85rem; color: var(--ink-muted); display: inline-block; margin-bottom: 20px;
+}
+.auth-form-header a:hover { color: var(--teal); }
+.auth-form-header h1 { font-size: 2rem; margin-bottom: 6px; }
+.auth-form-header p { color: var(--ink-muted); font-size: 0.9rem; }
+.auth-footer { text-align: center; margin-top: 20px; font-size: 0.875rem; color: var(--ink-muted); }
+.auth-footer a { color: var(--teal); font-weight: 600; }
+.divider-or {
+  display: flex; align-items: center; gap: 14px;
+  color: var(--ink-muted); font-size: 0.78rem; margin: 20px 0;
+}
+.divider-or::before, .divider-or::after {
+  content: ''; flex: 1; border-top: 1px solid var(--border);
+}
+@media(max-width:800px){
+  .auth-page { grid-template-columns: 1fr; }
+  .auth-visual { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-visual">
+    <div class="auth-visual-content">
+      <div class="auth-visual-brand">Wander<span>Go</span></div>
+      <div class="auth-visual-body">
+        <h2>Welcome Back, Explorer</h2>
+        <p>The world's most extraordinary experiences are waiting for you. Sign in to continue your journey.</p>
+        <div class="auth-testimonial">
+          <p>"WanderGo helped me find an incredible local cooking class in Bali that I never would have discovered on my own."</p>
+          <strong>— Priya S., Verified Traveler</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-form">
+      <div class="auth-form-header">
+        <a href="/">← Back to WanderGo</a>
+        <h1>Sign In</h1>
+        <p>Don't have an account? <a href="/register">Create one free</a></p>
+      </div>
+      <div id="formMsg" class="form-msg"></div>
+      <div class="field"><label>Email Address</label><input type="email" id="email" placeholder="you@example.com" autocomplete="email"/></div>
+      <div class="field"><label>Password</label><input type="password" id="password" placeholder="Your password" autocomplete="current-password"/></div>
+      <button class="btn btn-primary btn-full" id="submitBtn" onclick="handleLogin()">Sign In</button>
+      <div class="auth-footer">
+        New to WanderGo? <a href="/register">Create a free account</a>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/js/shared.js"></script>
+<script>
+// Redirect if already logged in
+if (Auth.isLoggedIn()) window.location.href = "/";
+
+async function handleLogin() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("formMsg");
+  const btn = document.getElementById("submitBtn");
+
+  msg.className = "form-msg"; msg.textContent = "";
+
+  if (!email || !password) {
+    msg.className = "form-msg error"; msg.textContent = "Please fill in all fields."; return;
+  }
+
+  btn.textContent = "Signing in…"; btn.disabled = true;
+  const r = await api("/auth/login", "POST", { email, password });
+  btn.textContent = "Sign In"; btn.disabled = false;
+
+  if (!r.ok) { msg.className = "form-msg error"; msg.textContent = r.data.error; return; }
+
+  Auth.setSession(r.data.token, r.data.user);
+  Toast.show(`Welcome back, ${r.data.user.name}!`, "success");
+
+  const next = new URLSearchParams(window.location.search).get("next");
+  setTimeout(() => window.location.href = next || (r.data.user.role === "host" ? "/host-dashboard" : "/dashboard"), 800);
+}
+
+document.addEventListener("keydown", e => { if (e.key === "Enter") handleLogin(); });
+</script>
+</body>
+</html>

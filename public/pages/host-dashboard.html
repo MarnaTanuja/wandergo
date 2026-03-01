@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Host Dashboard — WanderGo</title>
+<link rel="stylesheet" href="/css/shared.css"/>
+<style>
+body { background: var(--surface); }
+.dashboard-layout { display: grid; grid-template-columns: 240px 1fr; gap: 28px; align-items: start; }
+.sidebar { background: white; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; position: sticky; top: 90px; }
+.sidebar-user { padding: 24px; text-align: center; border-bottom: 1px solid var(--border); }
+.sidebar-avatar {
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 12px;
+  background: linear-gradient(135deg, #095f56, var(--teal));
+  color: white; font-size: 1.4rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.sidebar-name { font-size: 0.95rem; font-weight: 700; }
+.sidebar-role { font-size: 0.78rem; color: var(--teal); font-weight: 600; margin-top: 2px; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px; font-size: 0.875rem; font-weight: 500;
+  color: var(--ink-muted); border-left: 3px solid transparent; transition: all 0.15s;
+}
+.sidebar-nav a:hover { background: var(--surface); color: var(--ink); }
+.sidebar-nav a.active { background: rgba(13,122,110,0.06); color: var(--teal); border-left-color: var(--teal); }
+.dash-panel { display: none; }
+.dash-panel.active { display: block; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-mini { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: center; }
+.stat-mini .num { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 700; color: var(--teal); line-height: 1; }
+.stat-mini .lbl { font-size: 0.76rem; color: var(--ink-muted); margin-top: 4px; font-weight: 500; }
+.dash-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+.dash-card h3 { font-size: 1.1rem; margin-bottom: 16px; }
+.event-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.event-row:last-child { border-bottom: none; }
+.event-row-img { width: 60px; height: 50px; border-radius: var(--radius-sm); object-fit: cover; background: var(--surface); flex-shrink: 0; }
+.event-row-info { flex: 1; }
+.event-row-info strong { display: block; font-size: 0.9rem; margin-bottom: 2px; }
+.event-row-info small { font-size: 0.76rem; color: var(--ink-muted); }
+.event-row-stats { display: flex; gap: 12px; font-size: 0.76rem; color: var(--ink-muted); margin-top: 4px; }
+.booking-traveler {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.booking-traveler:last-child { border-bottom: none; }
+.trav-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: linear-gradient(135deg, #1a2030, #3b52c4);
+  color: white; font-size: 0.85rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.trav-info { flex: 1; }
+.trav-info strong { font-size: 0.88rem; display: block; }
+.trav-info small { font-size: 0.75rem; color: var(--ink-muted); }
+.trav-actions { display: flex; gap: 6px; }
+/* Post event form */
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar"></nav>
+<div class="section">
+  <div class="container">
+    <div class="dashboard-layout">
+      <div class="sidebar">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebarInitial">H</div>
+          <div class="sidebar-name" id="sidebarName">Host</div>
+          <div class="sidebar-role">Host Account</div>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#" class="active" onclick="showPanel('overview',this)">Overview</a>
+          <a href="#" onclick="showPanel('post',this)">Post Event</a>
+          <a href="#" onclick="showPanel('events',this)">My Events</a>
+          <a href="#" onclick="showPanel('bookings',this)">Traveler Bookings</a>
+          <a href="/messages">Messages</a>
+          <a href="#" onclick="showPanel('profile',this)">Profile</a>
+        </nav>
+      </div>
+      <div>
+        <!-- OVERVIEW -->
+        <div class="dash-panel active" id="panel-overview">
+          <div class="stats-row" id="statsRow">
+            <div class="stat-mini"><div class="num" id="s-events">—</div><div class="lbl">Events Posted</div></div>
+            <div class="stat-mini"><div class="num" id="s-bookings">—</div><div class="lbl">Total Bookings</div></div>
+            <div class="stat-mini"><div class="num" id="s-likes">—</div><div class="lbl">Total Likes</div></div>
+            <div class="stat-mini"><div class="num" id="s-views">—</div><div class="lbl">Total Views</div></div>
+          </div>
+          <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+            <div class="stat-mini"><div class="num" id="s-upcoming">—</div><div class="lbl">Upcoming Events</div></div>
+            <div class="stat-mini"><div class="num" id="s-past">—</div><div class="lbl">Past Events</div></div>
+            <div class="stat-mini"><div class="num" id="s-avg">—</div><div class="lbl">Avg Price (INR)</div></div>
+          </div>
+          <div class="dash-card">
+            <h3>Recent Traveler Bookings</h3>
+            <div id="recentBookings"></div>
+          </div>
+        </div>
+
+        <!-- POST EVENT -->
+        <div class="dash-panel" id="panel-post">
+          <div class="dash-card">
+            <h3 id="postFormTitle">Post a New Event</h3>
+            <div id="postMsg" class="form-msg"></div>
+            <input type="hidden" id="editingId"/>
+            <div class="form-grid-2">
+              <div class="field"><label>Event Title *</label><input id="evTitle" type="text" placeholder="Give your event a catchy name"/></div>
+              <div class="field"><label>City *</label><input id="evCity" type="text" placeholder="City name"/></div>
+            </div>
+            <div class="form-grid-2">
+              <div class="field"><label>Country</label><input id="evCountry" type="text" placeholder="Country"/></div>
+              <div class="field"><label>Category</label>
+                <select id="evCategory">
+                  <option value="other">Other</option>
+                  <option value="adventure">Adventure</option>
+                  <option value="culture">Culture</option>
+                  <option value="food">Food</option>
+                  <option value="music">Music</option>
+                  <option value="sports">Sports</option>
+                  <option value="wellness">Wellness</option>
+                </select>
+              </div>
+            </div>
+            <div class="field"><label>Description *</label><textarea id="evDesc" placeholder="Describe what travelers will experience…"></textarea></div>
+            <div class="form-grid-2">
+              <div class="field"><label>Date *</label><input id="evDate" type="date"/></div>
+              <div class="field"><label>Price (INR)</label><input id="evPrice" type="number" placeholder="0 = Free" min="0"/></div>
+            </div>
+            <div class="form-grid-2">
+              <div class="field"><label>Special Offer</label><input id="evOffer" type="text" placeholder="e.g. Early bird 20% off"/></div>
+              <div class="field"><label>Capacity (0 = unlimited)</label><input id="evCapacity" type="number" placeholder="0" min="0"/></div>
+            </div>
+            <div class="field"><label>Event Image URL</label><input id="evImage" type="text" placeholder="https://images.unsplash.com/…"/></div>
+            <div id="imagePreview" style="margin-bottom:16px;display:none"><img id="previewImg" style="height:180px;object-fit:cover;border-radius:var(--radius-sm);width:100%" alt="Preview"/></div>
+            <div class="field"><label>Tags (comma separated)</label><input id="evTags" type="text" placeholder="beach, sunset, guided tour"/></div>
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-primary" onclick="submitEvent()" id="postBtn">Post Event</button>
+              <button class="btn btn-ghost" id="cancelEditBtn" style="display:none" onclick="cancelEdit()">Cancel Edit</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- MY EVENTS -->
+        <div class="dash-panel" id="panel-events">
+          <div class="dash-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <h3 style="margin:0">My Events</h3>
+              <button class="btn btn-primary btn-sm" onclick="showPanel('post',null)">+ Post New</button>
+            </div>
+            <div id="myEventsList"></div>
+          </div>
+        </div>
+
+        <!-- BOOKINGS -->
+        <div class="dash-panel" id="panel-bookings">
+          <div class="dash-card">
+            <h3>Travelers Who Booked My Events</h3>
+            <div id="travelerBookings"></div>
+          </div>
+        </div>
+
+        <!-- PROFILE -->
+        <div class="dash-panel" id="panel-profile">
+          <div class="dash-card">
+            <h3>Profile Settings</h3>
+            <div id="profileMsg" class="form-msg"></div>
+            <div class="field"><label>Display Name</label><input type="text" id="profileName"/></div>
+            <div class="field"><label>Bio</label><textarea id="profileBio" placeholder="Tell travelers about yourself…" style="height:90px"></textarea></div>
+            <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/shared.js"></script>
+<script>
+if (!Auth.requireAuth("host")) throw "";
+buildNavbar();
+const user = Auth.getUser();
+document.getElementById("sidebarName").textContent = user.name;
+document.getElementById("sidebarInitial").textContent = user.name[0].toUpperCase();
+document.getElementById("profileName").value = user.name;
+
+function showPanel(name, link) {
+  document.querySelectorAll(".dash-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".sidebar-nav a").forEach(a => a.classList.remove("active"));
+  document.getElementById("panel-" + name)?.classList.add("active");
+  if (link) link.classList.add("active");
+  if (name === "overview") { loadAnalytics(); loadRecentBookings(); }
+  if (name === "events") loadMyEvents();
+  if (name === "bookings") loadTravelerBookings();
+}
+
+// Image preview
+document.getElementById("evImage")?.addEventListener("input", function () {
+  const prev = document.getElementById("imagePreview");
+  const img = document.getElementById("previewImg");
+  if (this.value) { img.src = this.value; prev.style.display = "block"; }
+  else { prev.style.display = "none"; }
+});
+
+async function loadAnalytics() {
+  const r = await api("/events/host/analytics");
+  if (!r.ok) return;
+  const d = r.data;
+  document.getElementById("s-events").textContent = d.totalEvents || 0;
+  document.getElementById("s-bookings").textContent = d.totalBookings || 0;
+  document.getElementById("s-likes").textContent = d.totalLikes || 0;
+  document.getElementById("s-views").textContent = d.totalViews || 0;
+  document.getElementById("s-upcoming").textContent = d.upcomingEvents || 0;
+  document.getElementById("s-past").textContent = d.pastEvents || 0;
+  document.getElementById("s-avg").textContent = d.avgPrice ? Math.round(d.avgPrice).toLocaleString() : "Free";
+}
+
+async function loadRecentBookings() {
+  const r = await api("/bookings/my-event-bookings");
+  const el = document.getElementById("recentBookings");
+  if (!r.ok || !r.data.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">🎟</div><h3>No bookings yet</h3><p>Once travelers book your events, they'll appear here.</p></div>`; return; }
+  el.innerHTML = r.data.slice(0, 5).map(b => travelerRow(b)).join("");
+}
+
+async function loadTravelerBookings() {
+  const r = await api("/bookings/my-event-bookings");
+  const el = document.getElementById("travelerBookings");
+  if (!r.ok || !r.data.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div><h3>No bookings yet</h3><p>When travelers book your events, you'll see them here.</p></div>`; return; }
+
+  // Group by event
+  const grouped = {};
+  r.data.forEach(b => {
+    const id = b.event?._id || "unknown";
+    if (!grouped[id]) grouped[id] = { event: b.event, bookings: [] };
+    grouped[id].bookings.push(b);
+  });
+
+  el.innerHTML = Object.values(grouped).map(g => `
+    <div style="margin-bottom:24px">
+      <div style="background:var(--surface);padding:12px 16px;border-radius:var(--radius-sm);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <div><strong style="font-size:0.9rem">${g.event?.title || "Event"}</strong><div style="font-size:0.76rem;color:var(--ink-muted)">${g.event?.location?.city || ""} &nbsp;|&nbsp; ${g.bookings.length} booking${g.bookings.length>1?"s":""}</div></div>
+        <a href="/event-detail?id=${g.event?._id}" class="btn btn-ghost btn-sm">View</a>
+      </div>
+      ${g.bookings.map(b => travelerRow(b)).join("")}
+    </div>`).join("");
+}
+
+function travelerRow(b) {
+  const evId = b.event?._id || b.event;
+  const statusColor = b.status === "cancelled" ? "badge-red" : "badge-teal";
+  return `
+    <div class="booking-traveler" style="flex-wrap:wrap;gap:10px">
+      <div class="trav-avatar">${(b.travelerName||"T")[0].toUpperCase()}</div>
+      <div class="trav-info" style="flex:1;min-width:200px">
+        <strong>${b.travelerName || "Traveler"}</strong>
+        <small>
+          ${b.travelerEmail || ""}
+          ${b.travelerPhone ? "&nbsp;·&nbsp; 📞 " + b.travelerPhone : ""}
+        </small>
+        <small style="display:block;margin-top:3px">
+          👥 ${b.attendees || 1} attendee${(b.attendees||1) > 1 ? "s" : ""}
+          &nbsp;·&nbsp; 💰 ${b.totalPrice > 0 ? "₹" + b.totalPrice.toLocaleString() : "Free"}
+          &nbsp;·&nbsp; Booked ${formatDate(b.createdAt)}
+        </small>
+        ${b.specialRequests ? `<small style="display:block;margin-top:3px;color:var(--teal)">Note: ${b.specialRequests}</small>` : ""}
+        ${b.emergencyContact ? `<small style="display:block;margin-top:2px;color:var(--ink-muted)">Emergency: ${b.emergencyContact}</small>` : ""}
+      </div>
+      <div class="trav-actions" style="flex-direction:column;align-items:flex-end;gap:6px">
+        <span class="badge ${statusColor}">${b.status || "confirmed"}</span>
+        <a href="/messages?event=${evId}&other=${b.traveler}&name=${encodeURIComponent(b.travelerName||"Traveler")}&title=${encodeURIComponent(b.event?.title||"Event")}"
+          class="btn btn-sm btn-primary">Message</a>
+        ${b.status !== "cancelled" ? `<button class="btn btn-sm btn-ghost" onclick="updateBookingStatus('${b._id}','cancelled')">Cancel</button>` : ""}
+      </div>
+    </div>`;
+}
+
+async function updateBookingStatus(id, status) {
+  if (!confirm("Cancel this booking?")) return;
+  const r = await api("/bookings/" + id + "/status", "PATCH", { status });
+  if (!r.ok) return Toast.show(r.data.error, "error");
+  Toast.show("Booking updated.", "info");
+  loadTravelerBookings();
+  loadRecentBookings();
+}
+
+async function loadMyEvents() {
+  const r = await api("/events/host/my");
+  const el = document.getElementById("myEventsList");
+  if (!r.ok || !r.data.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">📅</div><h3>No events yet</h3><button class="btn btn-primary btn-sm" style="margin-top:14px" onclick="showPanel('post',null)">Post Your First Event</button></div>`; return; }
+  el.innerHTML = r.data.map(ev => {
+    const img = ev.image || "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=200&q=70";
+    return `
+      <div class="event-row">
+        <img class="event-row-img" src="${img}" onerror="this.src='https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=200&q=70'" alt=""/>
+        <div class="event-row-info">
+          <strong>${ev.title}</strong>
+          <small>📍 ${ev.location?.city || ""} &nbsp;|&nbsp; 🗓 ${formatDate(ev.date)}</small>
+          <div class="event-row-stats"><span>♥ ${ev.likes}</span><span>👁 ${ev.views}</span><span>${ev.price > 0 ? "₹"+ev.price.toLocaleString() : "Free"}</span></div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-ghost" onclick="editEvent(${JSON.stringify(ev).replace(/"/g,"&quot;")})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteEvent('${ev._id}')">Delete</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function editEvent(ev) {
+  showPanel("post", null);
+  document.getElementById("editingId").value = ev._id;
+  document.getElementById("evTitle").value = ev.title || "";
+  document.getElementById("evCity").value = ev.location?.city || "";
+  document.getElementById("evCountry").value = ev.location?.country || "";
+  document.getElementById("evDesc").value = ev.description || "";
+  document.getElementById("evDate").value = ev.date ? ev.date.split("T")[0] : "";
+  document.getElementById("evPrice").value = ev.price || "";
+  document.getElementById("evOffer").value = ev.offer || "";
+  document.getElementById("evCapacity").value = ev.capacity || "";
+  document.getElementById("evImage").value = ev.image || "";
+  document.getElementById("evTags").value = (ev.tags || []).join(", ");
+  document.getElementById("evCategory").value = ev.category || "other";
+  document.getElementById("postFormTitle").textContent = "Edit Event";
+  document.getElementById("postBtn").textContent = "Update Event";
+  document.getElementById("cancelEditBtn").style.display = "inline-flex";
+  if (ev.image) { document.getElementById("previewImg").src = ev.image; document.getElementById("imagePreview").style.display = "block"; }
+}
+
+function cancelEdit() {
+  document.getElementById("editingId").value = "";
+  ["evTitle","evCity","evCountry","evDesc","evDate","evPrice","evOffer","evCapacity","evImage","evTags"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("evCategory").value = "other";
+  document.getElementById("postFormTitle").textContent = "Post a New Event";
+  document.getElementById("postBtn").textContent = "Post Event";
+  document.getElementById("cancelEditBtn").style.display = "none";
+  document.getElementById("imagePreview").style.display = "none";
+  document.getElementById("postMsg").className = "form-msg";
+}
+
+async function submitEvent() {
+  const title = document.getElementById("evTitle").value.trim();
+  const city = document.getElementById("evCity").value.trim();
+  const description = document.getElementById("evDesc").value.trim();
+  const date = document.getElementById("evDate").value;
+  const msg = document.getElementById("postMsg");
+  msg.className = "form-msg";
+
+  if (!title || !city || !description || !date) { msg.className = "form-msg error"; msg.textContent = "Title, city, description and date are required."; return; }
+
+  const body = {
+    title, city, country: document.getElementById("evCountry").value.trim(),
+    description, date, image: document.getElementById("evImage").value.trim(),
+    price: document.getElementById("evPrice").value || 0,
+    offer: document.getElementById("evOffer").value.trim(),
+    category: document.getElementById("evCategory").value,
+    capacity: document.getElementById("evCapacity").value || 0,
+    tags: document.getElementById("evTags").value,
+  };
+
+  const editId = document.getElementById("editingId").value;
+  const r = await api(editId ? `/events/${editId}` : "/events", editId ? "PUT" : "POST", body);
+
+  if (!r.ok) { msg.className = "form-msg error"; msg.textContent = r.data.error; return; }
+  msg.className = "form-msg success"; msg.textContent = editId ? "Event updated!" : "Event posted successfully!";
+  Toast.show(msg.textContent, "success");
+  if (!editId) cancelEdit();
+  loadMyEvents(); loadAnalytics();
+}
+
+async function deleteEvent(id) {
+  if (!confirm("Delete this event? This cannot be undone.")) return;
+  const r = await api("/events/" + id, "DELETE");
+  if (!r.ok) return Toast.show(r.data.error, "error");
+  Toast.show("Event deleted.", "info");
+  loadMyEvents(); loadAnalytics();
+}
+
+async function saveProfile() {
+  const name = document.getElementById("profileName").value.trim();
+  const bio = document.getElementById("profileBio").value.trim();
+  const r = await api("/auth/profile", "PATCH", { name, bio });
+  if (!r.ok) return Toast.show(r.data.error, "error");
+  Auth.setSession(Auth.getToken(), { ...user, name });
+  Toast.show("Profile updated!", "success");
+}
+
+loadAnalytics();
+loadRecentBookings();
+</script>
+</body>
+</html>

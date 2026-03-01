@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Messages — WanderGo</title>
+<link rel="stylesheet" href="/css/shared.css"/>
+<style>
+body { background: var(--surface); }
+.msg-layout { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 66px); }
+.conv-panel { background: white; border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; }
+.conv-header { padding: 20px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.conv-header h2 { font-size: 1.2rem; }
+.conv-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 16px 20px; cursor: pointer; border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.conv-item:hover { background: var(--surface); }
+.conv-item.active { background: rgba(13,122,110,0.06); border-left: 3px solid var(--teal); }
+.conv-avatar {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--teal), var(--teal-light));
+  color: white; display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; font-weight: 700;
+}
+.conv-info { flex: 1; min-width: 0; }
+.conv-name { font-size: 0.9rem; font-weight: 600; margin-bottom: 3px; }
+.conv-event { font-size: 0.75rem; color: var(--ink-muted); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-preview { font-size: 0.78rem; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.conv-time { font-size: 0.72rem; color: var(--ink-muted); }
+.conv-unread {
+  background: var(--teal); color: white; border-radius: 10px;
+  font-size: 0.68rem; font-weight: 700; padding: 2px 7px;
+}
+.chat-panel { display: flex; flex-direction: column; background: var(--surface); }
+.chat-header {
+  background: white; border-bottom: 1px solid var(--border);
+  padding: 18px 24px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 14px;
+}
+.chat-header-info h3 { font-size: 1rem; margin-bottom: 2px; }
+.chat-header-info small { color: var(--ink-muted); font-size: 0.78rem; }
+.chat-thread {
+  flex: 1; overflow-y: auto; padding: 24px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.chat-empty { flex: 1; display: flex; align-items: center; justify-content: center; }
+.chat-empty .empty-state { padding: 40px; }
+.bubble-wrap { display: flex; flex-direction: column; }
+.bubble-wrap.mine { align-items: flex-end; }
+.bubble-wrap.theirs { align-items: flex-start; }
+.bubble-sender { font-size: 0.72rem; color: var(--ink-muted); margin-bottom: 4px; font-weight: 600; }
+.bubble {
+  max-width: 72%; padding: 11px 15px; border-radius: 16px;
+  font-size: 0.9rem; line-height: 1.55;
+}
+.bubble.mine { background: var(--teal); color: white; border-bottom-right-radius: 4px; }
+.bubble.theirs { background: white; color: var(--ink); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.bubble-time { font-size: 0.68rem; color: var(--ink-muted); margin-top: 4px; }
+.chat-input-area {
+  background: white; border-top: 1px solid var(--border);
+  padding: 16px 24px; flex-shrink: 0;
+  display: flex; gap: 10px; align-items: flex-end;
+}
+.chat-input-area textarea {
+  flex: 1; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 14px; font-size: 0.9rem; font-family: 'Outfit', sans-serif;
+  outline: none; resize: none; max-height: 120px; min-height: 44px;
+  transition: border-color 0.2s;
+}
+.chat-input-area textarea:focus { border-color: var(--teal); }
+.no-chat-selected {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: var(--surface);
+}
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar"></nav>
+<div class="msg-layout">
+  <div class="conv-panel">
+    <div class="conv-header">
+      <h2>Messages</h2>
+    </div>
+    <div id="convList" style="flex:1"></div>
+  </div>
+  <div class="chat-panel" id="chatPanel">
+    <div class="no-chat-selected">
+      <div class="empty-state">
+        <div class="empty-icon">💬</div>
+        <h3>Select a conversation</h3>
+        <p>Choose a conversation from the left to view messages.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/js/shared.js"></script>
+<script>
+if (!Auth.requireAuth()) throw new Error("Not auth");
+buildNavbar("Messages");
+const user = Auth.getUser();
+let activeConv = null;
+
+async function loadConversations() {
+  const r = await api("/messages/conversations");
+  const list = document.getElementById("convList");
+  if (!r.ok || !r.data.length) {
+    list.innerHTML = `<div class="empty-state" style="padding:40px 20px"><div class="empty-icon" style="font-size:2rem">💬</div><p style="font-size:0.85rem">No conversations yet.</p></div>`;
+    return;
+  }
+  list.innerHTML = r.data.map(c => {
+    const other = c.other || {};
+    const ev = c.event || {};
+    const last = c.lastMessage || {};
+    const initial = (other.name || "U")[0].toUpperCase();
+    return `
+      <div class="conv-item" id="conv-${c._id?.event}-${c._id?.other}" 
+        onclick="openConversation('${c._id?.event}','${c._id?.other}','${esc(other.name||"User")}','${esc(ev.title||"Event")}')">
+        <div class="conv-avatar">${initial}</div>
+        <div class="conv-info">
+          <div class="conv-name">${other.name || "User"}</div>
+          <div class="conv-event">${ev.title || "Event"}</div>
+          <div class="conv-preview">${last.text || ""}</div>
+        </div>
+        <div class="conv-meta">
+          <div class="conv-time">${last.createdAt ? timeAgo(last.createdAt) : ""}</div>
+          ${c.unread > 0 ? `<div class="conv-unread">${c.unread}</div>` : ""}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function openConversation(eventId, otherUserId, otherName, eventTitle) {
+  activeConv = { eventId, otherUserId, otherName, eventTitle };
+  document.querySelectorAll(".conv-item").forEach(el => el.classList.remove("active"));
+  const item = document.getElementById(`conv-${eventId}-${otherUserId}`);
+  if (item) item.classList.add("active");
+
+  const panel = document.getElementById("chatPanel");
+  panel.innerHTML = `
+    <div class="chat-header">
+      <div class="conv-avatar">${otherName[0].toUpperCase()}</div>
+      <div class="chat-header-info">
+        <h3>${otherName}</h3>
+        <small>Re: ${eventTitle}</small>
+      </div>
+    </div>
+    <div class="chat-thread" id="chatThread"></div>
+    <div class="chat-input-area">
+      <textarea id="msgInput" placeholder="Type a message…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="btn btn-primary" onclick="sendMsg()">Send</button>
+    </div>`;
+
+  await loadThread();
+  document.getElementById("msgInput")?.focus();
+}
+
+async function loadThread() {
+  if (!activeConv) return;
+  const thread = document.getElementById("chatThread");
+  if (!thread) return;
+  const r = await api(`/messages/thread/${activeConv.eventId}/${activeConv.otherUserId}`);
+  if (!r.ok) return;
+
+  if (!r.data.length) {
+    thread.innerHTML = `<div class="chat-empty"><div class="empty-state"><div class="empty-icon">👋</div><h3>Start the conversation</h3><p>Send a message to get started.</p></div></div>`;
+    return;
+  }
+
+  thread.innerHTML = r.data.map(m => {
+    const mine = m.sender === user.id || m.sender === user._id || m.sender?._id === user.id;
+    return `
+      <div class="bubble-wrap ${mine ? "mine" : "theirs"}">
+        <div class="bubble-sender">${m.senderName}</div>
+        <div class="bubble ${mine ? "mine" : "theirs"}">${m.text}</div>
+        <div class="bubble-time">${timeAgo(m.createdAt)}</div>
+      </div>`;
+  }).join("");
+  thread.scrollTop = thread.scrollHeight;
+}
+
+async function sendMsg() {
+  if (!activeConv) return;
+  const input = document.getElementById("msgInput");
+  const text = input?.value.trim();
+  if (!text) return;
+  input.value = ""; input.style.height = "";
+  const body = { eventId: activeConv.eventId, text, recipientId: activeConv.otherUserId };
+  const r = await api("/messages", "POST", body);
+  if (!r.ok) return Toast.show(r.data.error, "error");
+  await loadThread();
+  loadConversations();
+}
+
+function handleKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+}
+
+function autoResize(el) {
+  el.style.height = ""; el.style.height = Math.min(el.scrollHeight, 120) + "px";
+}
+
+function esc(s) { return (s||"").replace(/'/g,"\\'"); }
+
+loadConversations();
+// Auto-refresh every 10s
+setInterval(async () => {
+  await loadConversations();
+  if (activeConv) await loadThread();
+}, 10000);
+
+// Open specific conversation from URL
+const urlParams = new URLSearchParams(window.location.search);
+const urlEvent = urlParams.get("event");
+const urlOther = urlParams.get("other");
+const urlName = urlParams.get("name");
+const urlTitle = urlParams.get("title");
+if (urlEvent && urlOther) {
+  setTimeout(() => openConversation(urlEvent, urlOther, urlName || "User", urlTitle || "Event"), 500);
+}
+</script>
+</body>
+</html>

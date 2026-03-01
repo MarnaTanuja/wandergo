@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Book Event — WanderGo</title>
+<link rel="stylesheet" href="/css/shared.css"/>
+<style>
+body { background: var(--surface); }
+
+.book-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 32px;
+  align-items: start;
+  padding: 48px 0;
+}
+
+.book-form-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 36px;
+}
+
+.book-form-card h2 {
+  font-size: 1.8rem;
+  margin-bottom: 6px;
+}
+
+.book-form-card .subtitle {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  margin-bottom: 32px;
+}
+
+.form-section {
+  margin-bottom: 28px;
+}
+
+.form-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.attendees-input {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  width: fit-content;
+}
+
+.attendees-input button {
+  width: 42px; height: 44px;
+  border: none; background: var(--surface);
+  font-size: 1.2rem; cursor: pointer;
+  color: var(--ink); transition: background 0.15s;
+}
+
+.attendees-input button:hover { background: var(--border); }
+
+.attendees-input input {
+  width: 60px; height: 44px;
+  border: none; border-left: 1.5px solid var(--border); border-right: 1.5px solid var(--border);
+  text-align: center; font-size: 1rem; font-family: 'Outfit', sans-serif;
+  outline: none; color: var(--ink);
+}
+
+.price-summary {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-top: 24px;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+
+.price-row.total {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.price-row.total span:last-child {
+  color: var(--teal);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.4rem;
+}
+
+/* Event summary card */
+.event-summary {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: sticky;
+  top: 90px;
+}
+
+.event-summary-img {
+  width: 100%; height: 200px;
+  object-fit: cover;
+  background: var(--surface);
+}
+
+.event-summary-body { padding: 20px; }
+
+.event-summary-body h3 {
+  font-size: 1.2rem;
+  margin-bottom: 12px;
+  line-height: 1.3;
+}
+
+.event-summary-detail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+
+.event-summary-detail strong { color: var(--ink); }
+
+.policy-box {
+  background: rgba(13,122,110,0.05);
+  border: 1px solid rgba(13,122,110,0.15);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-top: 16px;
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+  line-height: 1.7;
+}
+
+/* Success state */
+.success-screen {
+  display: none;
+  text-align: center;
+  padding: 60px 40px;
+}
+
+.success-screen .success-icon {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--teal), var(--teal-light));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+  font-size: 2rem; color: white;
+}
+
+.success-screen h2 { font-size: 2rem; margin-bottom: 10px; }
+.success-screen p { color: var(--ink-muted); font-size: 0.95rem; margin-bottom: 28px; }
+
+.booking-ref {
+  display: inline-block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  margin-bottom: 28px;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
+@media(max-width: 900px) {
+  .book-layout { grid-template-columns: 1fr; }
+  .event-summary { position: static; }
+  .form-grid-2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar"></nav>
+
+<div class="container">
+  <div class="book-layout">
+
+    <!-- BOOKING FORM -->
+    <div class="book-form-card">
+      <!-- Success screen (hidden by default) -->
+      <div class="success-screen" id="successScreen">
+        <div class="success-icon">✓</div>
+        <h2>Booking Confirmed!</h2>
+        <p>Your spot has been reserved. The host has been notified and will be in touch shortly.</p>
+        <div class="booking-ref" id="bookingRef">Booking ID: —</div>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <a href="/dashboard" class="btn btn-primary">View My Bookings</a>
+          <a href="/events" class="btn btn-ghost">Browse More Events</a>
+        </div>
+      </div>
+
+      <!-- Form (shown by default) -->
+      <div id="formScreen">
+        <h2>Complete Your Booking</h2>
+        <p class="subtitle">Fill in your details to confirm your spot.</p>
+
+        <div id="formMsg" class="form-msg"></div>
+
+        <!-- Personal Details -->
+        <div class="form-section">
+          <div class="form-section-title">Your Details</div>
+          <div class="form-grid-2">
+            <div class="field">
+              <label>Full Name</label>
+              <input type="text" id="travelerName" placeholder="Your full name" readonly/>
+            </div>
+            <div class="field">
+              <label>Email Address</label>
+              <input type="email" id="travelerEmail" placeholder="your@email.com" readonly/>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="field">
+              <label>Phone Number *</label>
+              <input type="tel" id="phone" placeholder="+91 98765 43210"/>
+            </div>
+            <div class="field">
+              <label>Emergency Contact</label>
+              <input type="text" id="emergencyContact" placeholder="Name & phone (optional)"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Booking Details -->
+        <div class="form-section">
+          <div class="form-section-title">Booking Details</div>
+          <div class="field">
+            <label>Number of Attendees</label>
+            <div class="attendees-input">
+              <button onclick="changeAttendees(-1)">−</button>
+              <input type="number" id="attendees" value="1" min="1" max="20" onchange="updatePrice()"/>
+              <button onclick="changeAttendees(1)">+</button>
+            </div>
+          </div>
+          <div class="field" style="margin-top:16px">
+            <label>Special Requests</label>
+            <textarea id="specialRequests" placeholder="Dietary requirements, accessibility needs, questions for the host…" style="height:90px"></textarea>
+          </div>
+        </div>
+
+        <!-- Price Summary -->
+        <div class="price-summary">
+          <div class="price-row">
+            <span id="pricePerPerson">₹0 per person</span>
+            <span id="priceCalc">× 1</span>
+          </div>
+          <div class="price-row total">
+            <span>Total</span>
+            <span id="totalPrice">₹0</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" style="margin-top:20px;padding:14px" id="submitBtn" onclick="submitBooking()">
+          Confirm Booking
+        </button>
+
+        <p style="text-align:center;font-size:0.78rem;color:var(--ink-muted);margin-top:12px">
+          By booking you agree to the event's cancellation policy.
+        </p>
+      </div>
+    </div>
+
+    <!-- EVENT SUMMARY SIDEBAR -->
+    <div class="event-summary" id="eventSummary">
+      <img class="event-summary-img" id="summaryImg" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=75'"/>
+      <div class="event-summary-body">
+        <h3 id="summaryTitle">Loading…</h3>
+        <div class="event-summary-detail">
+          <span>📍</span><span id="summaryLocation"></span>
+        </div>
+        <div class="event-summary-detail">
+          <span>🗓</span><span id="summaryDate"></span>
+        </div>
+        <div class="event-summary-detail">
+          <span>👤</span><span>Hosted by <strong id="summaryHost"></strong></span>
+        </div>
+        <div class="event-summary-detail">
+          <span>💰</span><span id="summaryPrice"></span>
+        </div>
+        <div class="policy-box">
+          Free cancellation up to 24 hours before the event. Contact the host directly for special arrangements.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="footer"><div class="container"><div class="footer-brand">WanderGo</div><div class="footer-copy">© 2025 WanderGo</div></div></footer>
+
+<script src="/js/shared.js"></script>
+<script>
+// Must be logged in as traveler
+if (!Auth.isLoggedIn()) {
+  window.location.href = "/login?next=" + encodeURIComponent(window.location.href);
+}
+const user = Auth.getUser();
+if (user && user.role !== "traveler") {
+  alert("Only travelers can book events.");
+  window.location.href = "/events";
+}
+
+buildNavbar();
+
+const eventId = new URLSearchParams(window.location.search).get("id");
+if (!eventId) window.location.href = "/events";
+
+let eventPrice = 0;
+
+// Pre-fill user details
+document.getElementById("travelerName").value = user?.name || "";
+document.getElementById("travelerEmail").value = user?.email || "";
+
+// Load event details
+async function loadEvent() {
+  const r = await api("/events/" + eventId);
+  if (!r.ok) { window.location.href = "/events"; return; }
+
+  const ev = r.data.event;
+  eventPrice = ev.price || 0;
+
+  // Check if already booked
+  const checkR = await api("/bookings/check/" + eventId);
+  if (checkR.ok && checkR.data.booked) {
+    document.getElementById("formMsg").className = "form-msg error";
+    document.getElementById("formMsg").textContent = "You have already booked this event.";
+    document.getElementById("submitBtn").disabled = true;
+    document.getElementById("submitBtn").textContent = "Already Booked";
+  }
+
+  // Fill sidebar
+  const img = ev.image || "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=75";
+  document.getElementById("summaryImg").src = img;
+  document.getElementById("summaryTitle").textContent = ev.title;
+  document.getElementById("summaryLocation").textContent = ev.location?.city + (ev.location?.country ? ", " + ev.location.country : "");
+  document.getElementById("summaryDate").textContent = formatDate(ev.date);
+  document.getElementById("summaryHost").textContent = ev.hostName || ev.host?.name || "Host";
+  document.getElementById("summaryPrice").textContent = eventPrice > 0 ? `₹${eventPrice.toLocaleString()} per person` : "Free";
+
+  document.title = `Book: ${ev.title} — WanderGo`;
+  updatePrice();
+}
+
+function updatePrice() {
+  const attendees = parseInt(document.getElementById("attendees").value) || 1;
+  const total = eventPrice * attendees;
+  document.getElementById("pricePerPerson").textContent = eventPrice > 0 ? `₹${eventPrice.toLocaleString()} per person` : "Free";
+  document.getElementById("priceCalc").textContent = `× ${attendees}`;
+  document.getElementById("totalPrice").textContent = eventPrice > 0 ? `₹${total.toLocaleString()}` : "Free";
+}
+
+function changeAttendees(delta) {
+  const input = document.getElementById("attendees");
+  const val = Math.max(1, Math.min(20, parseInt(input.value) + delta));
+  input.value = val;
+  updatePrice();
+}
+
+async function submitBooking() {
+  const phone = document.getElementById("phone").value.trim();
+  const attendees = parseInt(document.getElementById("attendees").value) || 1;
+  const specialRequests = document.getElementById("specialRequests").value.trim();
+  const emergencyContact = document.getElementById("emergencyContact").value.trim();
+  const msg = document.getElementById("formMsg");
+
+  msg.className = "form-msg"; msg.textContent = "";
+
+  if (!phone) {
+    msg.className = "form-msg error";
+    msg.textContent = "Please enter your phone number.";
+    return;
+  }
+
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.textContent = "Confirming…";
+
+  const r = await api("/bookings", "POST", {
+    eventId,
+    attendees,
+    phone,
+    specialRequests,
+    emergencyContact,
+  });
+
+  if (!r.ok) {
+    msg.className = "form-msg error";
+    msg.textContent = r.data.error;
+    btn.disabled = false;
+    btn.textContent = "Confirm Booking";
+    return;
+  }
+
+  // Show success screen
+  document.getElementById("formScreen").style.display = "none";
+  document.getElementById("successScreen").style.display = "block";
+  document.getElementById("bookingRef").textContent = "Booking ID: " + r.data.booking._id;
+}
+
+loadEvent();
+</script>
+</body>
+</html>
