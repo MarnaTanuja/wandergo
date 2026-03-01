@@ -154,6 +154,6 @@ Events that are both popular and recent rank higher than old popular ones.
 - Admin dashboard page is built but needs more features
 - Could add WebSockets for real-time messaging instead of polling
 
----
+Live demo: https://wandergo-1.onrender.com/
 
 *Built by Tanuja — 2025*
